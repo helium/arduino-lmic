@@ -780,14 +780,16 @@ static void txfsk () {
     // enable antenna switch for TX
     hal_pin_rxtx(1);
 
+    if (LMIC.txend)
+        hal_waitUntil(LMIC.txend); // busy wait until exact rx time
     // now we actually start the transmission
-    if (LMIC.txend) {
-        u4_t nLate = hal_waitUntil(LMIC.txend); // busy wait until exact tx time
-        if (nLate > 0) {
-            LMIC.radio.txlate_ticks += nLate;
-            ++LMIC.radio.txlate_count;
-        }
-    }
+    // if (LMIC.txend) {
+    //     u4_t nLate = hal_waitUntil(LMIC.txend); // busy wait until exact tx time
+    //     if (nLate > 0) {
+    //         LMIC.radio.txlate_ticks += nLate;
+    //         ++LMIC.radio.txlate_count;
+    //     }
+    // }
     LMICOS_logEventUint32("+Tx FSK", LMIC.dataLen);
     opmode(OPMODE_TX);
 }
@@ -833,13 +835,16 @@ static void txlora () {
     hal_pin_rxtx(1);
 
     // now we actually start the transmission
-    if (LMIC.txend) {
-        u4_t nLate = hal_waitUntil(LMIC.txend); // busy wait until exact tx time
-        if (nLate) {
-            LMIC.radio.txlate_ticks += nLate;
-            ++LMIC.radio.txlate_count;
-        }
-    }
+    // if (LMIC.txend) {
+    //     u4_t nLate = hal_waitUntil(LMIC.txend); // busy wait until exact tx time
+    //     if (nLate) {
+    //         LMIC.radio.txlate_ticks += nLate;
+    //         ++LMIC.radio.txlate_count;
+    //     }
+    // }
+    if (LMIC.txend)
+        hal_waitUntil(LMIC.txend); // busy wait until exact rx time
+        
     LMICOS_logEventUint32("+Tx LoRa", LMIC.dataLen);
     opmode(OPMODE_TX);
 
@@ -977,10 +982,12 @@ static void rxlora (u1_t rxmode) {
 
     // now instruct the radio to receive
     if (rxmode == RXMODE_SINGLE) { // single rx
-        u4_t nLate = hal_waitUntil(LMIC.rxtime); // busy wait until exact rx time
+        // u4_t nLate = hal_waitUntil(LMIC.rxtime); // busy wait until exact rx time
+        hal_waitUntil(LMIC.rxtime); // busy wait until exact rx time
+        LMICOS_logEvent("+Rx LoRa Single");
         opmode(OPMODE_RX_SINGLE);
-        LMICOS_logEventUint32("+Rx LoRa Single", nLate);
-        rxlate(nLate);
+        // LMICOS_logEventUint32("+Rx LoRa Single", nLate);
+        // rxlate(nLate);
 #if LMIC_DEBUG_LEVEL > 0
         ostime_t now = os_getTime();
         LMIC_DEBUG_PRINTF("start single rx: now-rxtime: %"LMIC_PRId_ostime_t"\n", now - LMIC.rxtime);
@@ -1049,10 +1056,13 @@ static void rxfsk (u1_t rxmode) {
 
     // now instruct the radio to receive
     if (rxmode == RXMODE_SINGLE) {
-        u4_t nLate = hal_waitUntil(LMIC.rxtime); // busy wait until exact rx time
+        // u4_t nLate = hal_waitUntil(LMIC.rxtime); // busy wait until exact rx time
+        // opmode(OPMODE_RX); // no single rx mode available in FSK
+        // LMICOS_logEventUint32("+Rx FSK", nLate);
+        // rxlate(nLate);
+        hal_waitUntil(LMIC.rxtime); // busy wait until exact rx time
+        LMICOS_logEvent("+Rx FSK");
         opmode(OPMODE_RX); // no single rx mode available in FSK
-        LMICOS_logEventUint32("+Rx FSK", nLate);
-        rxlate(nLate);
     } else {
         LMICOS_logEvent("+Rx FSK Continuous");
         opmode(OPMODE_RX);

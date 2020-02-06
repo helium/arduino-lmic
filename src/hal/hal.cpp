@@ -248,49 +248,60 @@ static s4_t delta_time(u4_t time) {
     return (s4_t)(time - hal_ticks());
 }
 
-u4_t hal_waitUntil (u4_t time) {
+// u4_t hal_waitUntil (u4_t time) {
+//     s4_t delta = delta_time(time);
+//     // check for already too late.
+//     if (delta < 0)
+//         return -delta;
+
+//     // From delayMicroseconds docs: Currently, the largest value that
+//     // will produce an accurate delay is 16383. Also, STM32 does a better
+//     // job with delay is less than 10,000 us; so reduce in steps.
+//     // It's nice to use delay() for the longer times.
+//     while (delta > (9000 / US_PER_OSTICK)) {
+//         // deliberately delay 8ms rather than 9ms, so we
+//         // will exit loop with delta typically positive.
+//         // Depends on BSP keeping time accurately even if interrupts
+//         // are disabled.
+//         delay(8);
+//         // re-synchronize.
+//         delta = delta_time(time);
+//     }
+
+//     // The radio driver runs with interrupt disabled, and this can
+//     // mess up timing APIs on some platforms. If we know the BSP feature
+//     // set, we can decide whether to use delta_time() [more exact, 
+//     // but not always possible with interrupts off], or fall back to
+//     // delay_microseconds() [less exact, but more universal]
+
+// #if defined(_mcci_arduino_version)
+//     // unluckily, delayMicroseconds() isn't very accurate.
+//     // but delta_time() works with interrupts disabled.
+//     // so spin using delta_time().
+//     while (delta_time(time) > 0)
+//         /* loop */;
+// #else // ! defined(_mcci_arduino_version)
+//     // on other BSPs, we need to stick with the older way,
+//     // until we fix the radio driver to run with interrupts
+//     // enabled.
+//     if (delta > 0)
+//         delayMicroseconds(delta * US_PER_OSTICK);
+// #endif // ! defined(_mcci_arduino_version)
+
+//     // we aren't "late". Callers are interested in gross delays, not
+//     // necessarily delays due to poor timekeeping here.
+//     return 0;
+// }
+void hal_waitUntil (u4_t time) {
     s4_t delta = delta_time(time);
-    // check for already too late.
-    if (delta < 0)
-        return -delta;
-
     // From delayMicroseconds docs: Currently, the largest value that
-    // will produce an accurate delay is 16383. Also, STM32 does a better
-    // job with delay is less than 10,000 us; so reduce in steps.
-    // It's nice to use delay() for the longer times.
-    while (delta > (9000 / US_PER_OSTICK)) {
-        // deliberately delay 8ms rather than 9ms, so we
-        // will exit loop with delta typically positive.
-        // Depends on BSP keeping time accurately even if interrupts
-        // are disabled.
-        delay(8);
-        // re-synchronize.
-        delta = delta_time(time);
+    // will produce an accurate delay is 16383.
+    while (delta > (16000 / US_PER_OSTICK)) {
+        delay(16);
+        delta -= (16000 / US_PER_OSTICK);
     }
-
-    // The radio driver runs with interrupt disabled, and this can
-    // mess up timing APIs on some platforms. If we know the BSP feature
-    // set, we can decide whether to use delta_time() [more exact, 
-    // but not always possible with interrupts off], or fall back to
-    // delay_microseconds() [less exact, but more universal]
-
-#if defined(_mcci_arduino_version)
-    // unluckily, delayMicroseconds() isn't very accurate.
-    // but delta_time() works with interrupts disabled.
-    // so spin using delta_time().
-    while (delta_time(time) > 0)
-        /* loop */;
-#else // ! defined(_mcci_arduino_version)
-    // on other BSPs, we need to stick with the older way,
-    // until we fix the radio driver to run with interrupts
-    // enabled.
     if (delta > 0)
         delayMicroseconds(delta * US_PER_OSTICK);
-#endif // ! defined(_mcci_arduino_version)
-
-    // we aren't "late". Callers are interested in gross delays, not
-    // necessarily delays due to poor timekeeping here.
-    return 0;
 }
 
 // check and rewind for target time
